@@ -11,4 +11,7 @@ int setup_ipc_namespace(void);
 int setup_uts_namespace(void);
 int setup_all_namespaces(int enable_network);
 
+int exec_shell(void);
+int setup_pivot_root(void);
+
 #endif // NAMESPACES_H
