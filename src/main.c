@@ -1,7 +1,6 @@
-#include "namespaces.h"
+#include "runbox.h"
 
 int main(int argc, char** argv) {
-    setup_all_namespaces(0);
-
+    setup_sandbox();
     return 0;
 }

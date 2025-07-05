@@ -17,6 +17,7 @@
 
 
 int setup_all_namespaces(int enable_network) {
+    // First fork: isolate namespace setup from main process
     pid_t pid = fork();
     if (pid == 0) {
         if (setup_user_namespace() != 0) {
@@ -27,9 +28,29 @@ int setup_all_namespaces(int enable_network) {
             return 1;
         }
 
-        setup_pivot_root();
+        if (setup_pid_namespace() != 0) {
+            return 1;
+        }
 
-        exec_shell();
+        // Second fork: actually enter the PID namespace (becomes PID 1)
+        pid_t child_pid = fork();
+        if (child_pid == 0) {
+            // Mount /proc to show processes from the new PID namespace
+            if (mount("proc", "/tmp/runbox/proc", "proc", 0, NULL) == -1) {
+                printf("failed mounting proc: %s\n", strerror(errno));
+                return 1;
+            }
+            setup_pivot_root();
+            exec_shell();
+        } else if (child_pid > 0) {
+            int status;
+            waitpid(child_pid, &status, 0);
+            return WEXITSTATUS(status);
+        } else {
+            perror("fork failed");
+            return 1;
+        }
+
     } else if (pid > 0) {
         int status;
         waitpid(pid, &status, 0);
@@ -70,7 +91,7 @@ int setup_user_namespace(void) {
         return 1;
     }
 
-    // Write the mappings
+    // Map current user to root (uid 0) in the namespace
     if (dprintf(uid_fd, "0 %d 1", uid) < 0) {
         printf("uid_map write failed: %s\n", strerror(errno));
         close(uid_fd);
@@ -86,6 +107,7 @@ int setup_user_namespace(void) {
         return 1;
     }
 
+    // Disable setgroups - required before mapping groups in user namespace
     if (write(setgroups_fd, "deny", 4) != 4) {
         printf("setgroups write failed: %s\n", strerror(errno));
         close(setgroups_fd);
@@ -121,6 +143,7 @@ int setup_mount_namespace(void) {
         }
     }
 
+    // Mount new tmpfs - creates isolated filesystem for sandbox
     if (mount("tmpfs", "/tmp/runbox", "tmpfs", 0, NULL) == -1) {
         printf("failed mounting tmpfs: %s\n", strerror(errno));
         return 1;
@@ -151,8 +174,14 @@ int setup_mount_namespace(void) {
             return 1;
         }
     }
+    if (mkdir("/tmp/runbox/proc", 0755) == -1) {
+        if (errno != EEXIST) {
+            printf("failed creating sandbox proc: %s\n", strerror(errno));
+            return 1;
+        }
+    }
 
-    // Mount /bin
+    // Bind mount essential directories from host, then make read-only
     if (mount("/bin", "/tmp/runbox/bin", NULL, MS_BIND, NULL) == -1) {
         printf("failed mounting /bin: %s\n", strerror(errno));
         return 1;
@@ -219,6 +248,15 @@ int setup_mount_namespace(void) {
     return 0;
 }
 
+int setup_pid_namespace(void) {
+    if (unshare(CLONE_NEWPID) == -1) {
+        printf("unshare failed while creating pid namespace: %s\n", strerror(errno));
+        return 1;
+    }
+
+    return 0;
+}
+
 int setup_pivot_root(void) {
     // Create the old_root directory for pivot_root
     if (mkdir("/tmp/runbox/old_root", 0755) == -1) {
@@ -228,6 +266,7 @@ int setup_pivot_root(void) {
         }
     }
 
+    // Atomically switch to new root and store old root in old_root
     if (syscall(SYS_pivot_root, "/tmp/runbox", "/tmp/runbox/old_root") == -1) {
         printf("failed to pivot root: %s\n", strerror(errno));
         return 1;
@@ -238,7 +277,7 @@ int setup_pivot_root(void) {
         return 1;
     }
 
-    // Now we're in the new root, clean up the old root
+    // Clean up old root for security - remove access to host filesystem
     if (umount2("/old_root", MNT_DETACH) == -1) {
         printf("failed to unmount old root: %s\n", strerror(errno));
     }
