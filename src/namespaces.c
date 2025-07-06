@@ -40,6 +40,8 @@ int setup_all_namespaces(int enable_network) {
                 printf("failed mounting proc: %s\n", strerror(errno));
                 return 1;
             }
+
+            setup_network_namespace(0);
             setup_pivot_root();
             exec_shell();
         } else if (child_pid > 0) {
@@ -251,6 +253,15 @@ int setup_mount_namespace(void) {
 int setup_pid_namespace(void) {
     if (unshare(CLONE_NEWPID) == -1) {
         printf("unshare failed while creating pid namespace: %s\n", strerror(errno));
+        return 1;
+    }
+
+    return 0;
+}
+
+int setup_network_namespace(int enable_network) {
+    if (unshare(CLONE_NEWNET) == -1) {
+        printf("unshare failed while creating net namespace: %s\n", strerror(errno));
         return 1;
     }
 
