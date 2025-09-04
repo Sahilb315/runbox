@@ -11,7 +11,7 @@ Runbox is a lightweight Linux sandboxing system built from scratch in C. Its mai
 - **Mount Namespace:** Creates an isolated filesystem using tmpfs and bind mounts for essential directories.
 - **Network Namespace:** (In progress) Will provide network isolation for sandboxed processes.
 - **Pivot Root:** Uses `pivot_root` to fully isolate the filesystem from the host.
-- **Minimal Shell Environment:** Launches a shell (`/bin/bash` or `/bin/sh`) inside the sandbox.
+- **Minimal Shell Environment:** Launches a interactive shell inside the sandbox.
 
 ## Prerequisites
 
@@ -43,13 +43,11 @@ This will launch a shell inside an isolated environment. The root filesystem is 
 # Try running commands like 'ls', 'ps', etc. inside the sandbox.
 ```
 
-## Limitations & TODO
+## TODO
 
-- Network namespace is not fully implemented.
-- No resource limits (CPU, memory, etc.) yet.
-- No seccomp or syscall filtering.
-- No support for custom command execution (currently launches a shell).
-- No persistent storage; everything is ephemeral in `/tmp/runbox`.
+- Implement full network namespace isolation.
+- Add support for cgroups for resource management.
+- Integrate seccomp or syscall filtering.
 
 ## License
 
@@ -60,5 +58,3 @@ MIT License. See [LICENSE](./LICENSE) for details.
 Contributions are welcome! Please open issues or pull requests for suggestions, bug reports, or improvements.
 
 ---
-
-**Note:** This project is for educational purposes. 
