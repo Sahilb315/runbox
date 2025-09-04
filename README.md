@@ -9,6 +9,7 @@ Runbox is a lightweight Linux sandboxing system built from scratch in C. Its mai
 - **User Namespace:** Isolates user and group IDs for contained processes.
 - **PID Namespace:** Provides a separate process tree, making the sandboxed process PID 1.
 - **Mount Namespace:** Creates an isolated filesystem using tmpfs and bind mounts for essential directories.
+- **IPC Namespace:** Provides isolation for System V IPC objects (message queues, semaphores, shared memory) and POSIX message queues, giving the namespace its own independent set of IPC resources.
 - **Network Namespace:** (In progress) Will provide network isolation for sandboxed processes.
 - **Pivot Root:** Uses `pivot_root` to fully isolate the filesystem from the host.
 - **Minimal Shell Environment:** Launches a interactive shell inside the sandbox.

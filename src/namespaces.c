@@ -41,6 +41,11 @@ int setup_all_namespaces(int enable_network) {
                 return 1;
             }
 
+            // Isolate inter processes communication using the IPC namespace
+            if (setup_ipc_namespace() != 0) {
+                return 1;
+            }
+
             setup_network_namespace(0);
             setup_pivot_root();
             exec_shell();
@@ -262,6 +267,15 @@ int setup_pid_namespace(void) {
 int setup_network_namespace(int enable_network) {
     if (unshare(CLONE_NEWNET) == -1) {
         printf("unshare failed while creating net namespace: %s\n", strerror(errno));
+        return 1;
+    }
+
+    return 0;
+}
+
+int setup_ipc_namespace(void) {
+    if (unshare(CLONE_NEWIPC) == -1) {
+        printf("unshare failed while creating ipc namespace: %s\n", strerror(errno));
         return 1;
     }
 
