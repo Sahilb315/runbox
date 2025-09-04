@@ -10,8 +10,8 @@ SRCS = src/main.c src/runbox.c src/namespaces.c
 OBJS = $(patsubst src/%.c,bin/%.o,$(SRCS))
 
 # Build the executable
-build/sandbox: $(OBJS)
-	$(CC) $(OBJS) -o build/sandbox
+build/runbox: $(OBJS)
+	$(CC) $(OBJS) -o build/runbox
 
 # Compile source files to object files
 bin/%.o: src/%.c

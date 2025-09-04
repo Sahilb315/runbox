@@ -1,6 +1,8 @@
 # Prerequisites
 *.d
 
+.DS_Store
+
 # Object files
 *.o
 *.ko
@@ -54,3 +56,4 @@ dkms.conf
 
 /bin
 /build
+.devcontainer/
