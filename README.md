@@ -30,7 +30,7 @@ make
 Runbox is intended to be run from the command line. After building, you can start a sandboxed shell:
 
 ```sh
-./runbox
+./build/runbox
 ```
 
 This will launch a shell inside an isolated environment. The root filesystem is set to `/tmp/runbox` and essential binaries are bind-mounted read-only.
@@ -38,7 +38,7 @@ This will launch a shell inside an isolated environment. The root filesystem is 
 ## Example
 
 ```sh
-./runbox
+./build/runbox
 # You should see a shell prompt like: runbox@root:/#
 # Try running commands like 'ls', 'ps', etc. inside the sandbox.
 ```
