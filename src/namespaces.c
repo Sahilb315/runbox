@@ -46,6 +46,12 @@ int setup_all_namespaces(int enable_network) {
                 return 1;
             }
 
+            if (setup_uts_namespace() != 0) {
+                return 1;
+            }
+
+            // Currently there is no functionality to forward ports or create a tunnel for 
+            // getting network connection, so network is fully isolated
             setup_network_namespace(0);
             setup_pivot_root();
             exec_shell();
@@ -276,6 +282,15 @@ int setup_network_namespace(int enable_network) {
 int setup_ipc_namespace(void) {
     if (unshare(CLONE_NEWIPC) == -1) {
         printf("unshare failed while creating ipc namespace: %s\n", strerror(errno));
+        return 1;
+    }
+
+    return 0;
+}
+
+int setup_uts_namespace(void) {
+    if (unshare(CLONE_NEWUTS) == -1) {
+        printf("unshare failed while creating uts namespace: %s\n", strerror(errno));
         return 1;
     }
 
