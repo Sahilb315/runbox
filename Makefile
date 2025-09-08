@@ -1,6 +1,6 @@
 
 CC = gcc
-CFLAGS = -Wall -Wextra -Wno-unused-parameter -I./src
+CFLAGS = -Wall -Wextra -Wno-unused-parameter -I./src -I./include
 
 # Create needed directories
 $(shell mkdir -p build bin)

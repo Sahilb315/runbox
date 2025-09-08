@@ -41,12 +41,7 @@ int setup_all_namespaces(int enable_network) {
                 return 1;
             }
 
-            // Isolate inter processes communication using the IPC namespace
-            if (setup_ipc_namespace() != 0) {
-                return 1;
-            }
-
-            if (setup_uts_namespace() != 0) {
+            if (setup_ipc_and_uts_namespace() != 0) {
                 return 1;
             }
 
@@ -279,18 +274,9 @@ int setup_network_namespace(int enable_network) {
     return 0;
 }
 
-int setup_ipc_namespace(void) {
-    if (unshare(CLONE_NEWIPC) == -1) {
-        printf("unshare failed while creating ipc namespace: %s\n", strerror(errno));
-        return 1;
-    }
-
-    return 0;
-}
-
-int setup_uts_namespace(void) {
-    if (unshare(CLONE_NEWUTS) == -1) {
-        printf("unshare failed while creating uts namespace: %s\n", strerror(errno));
+int setup_ipc_and_uts_namespace(void) {
+    if (unshare(CLONE_NEWUTS | CLONE_NEWIPC) == -1) {
+        printf("unshare failed while creating uts & ipc namespace: %s\n", strerror(errno));
         return 1;
     }
 
