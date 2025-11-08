@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
 #include <sys/wait.h>
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <fcntl.h>
@@ -13,8 +14,8 @@
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/sysmacros.h>
+#include <linux/capability.h>
 #include "namespaces.h"
-
 
 int setup_all_namespaces(int enable_network) {
     // First fork: isolate namespace setup from main process
@@ -49,6 +50,12 @@ int setup_all_namespaces(int enable_network) {
             // getting network connection, so network is fully isolated
             setup_network_namespace(0);
             setup_pivot_root();
+
+             drop_bounding_caps();
+
+            // Reset the capabilities to some default capabilities
+             apply_default_capabilities();
+
             exec_shell();
         } else if (child_pid > 0) {
             int status;
@@ -310,6 +317,48 @@ int setup_pivot_root(void) {
 
     if (rmdir("/old_root") == -1) {
         printf("failed to remove old_root dir: %s\n", strerror(errno));
+    }
+
+    return 0;
+}
+int drop_bounding_caps() {
+    int caps_to_drop[] = { CAP_SYS_ADMIN, CAP_NET_ADMIN, CAP_SYS_PTRACE, CAP_SYS_MODULE };
+    for (size_t i = 0; i < sizeof(caps_to_drop)/sizeof(caps_to_drop[0]); i++) {
+        prctl(PR_CAPBSET_DROP, caps_to_drop[i], 0, 0, 0);
+    }
+    return 0;
+}
+
+int apply_default_capabilities() {
+    struct __user_cap_header_struct cap_header;
+    struct __user_cap_data_struct cap_data[2];
+
+    // Clear out any garage values if present (just a safety step)
+    memset(&cap_header, 0, sizeof(cap_header));
+    memset(&cap_data, 0, sizeof(cap_data));
+
+    cap_header.version = _LINUX_CAPABILITY_VERSION_3;
+    cap_header.pid = 0; // set caps for current process (0)
+
+    unsigned long default_caps[] = {CAP_CHOWN, CAP_DAC_OVERRIDE, CAP_FSETID, CAP_FOWNER, 
+         CAP_NET_RAW, CAP_SETGID, CAP_SETUID, CAP_SETFCAP, CAP_SETPCAP, CAP_NET_BIND_SERVICE, CAP_SYS_CHROOT,
+         CAP_KILL, CAP_AUDIT_WRITE};
+
+    for (size_t i = 0; i < sizeof(default_caps) / sizeof(default_caps[0]); i++) {
+        int cap = default_caps[i];
+
+        if (cap < 32) {
+            cap_data[0].effective |= (1U << cap);
+            cap_data[0].permitted |= (1U << cap);
+        } else {
+            cap_data[1].effective |= (1U << (cap - 32));
+            cap_data[1].permitted |= (1U << (cap - 32));
+        }
+    }
+
+    if (syscall(SYS_capset, &cap_header, &cap_data) < 0) {
+        perror("capset failed");
+        return -1;
     }
 
     return 0;

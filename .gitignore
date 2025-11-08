@@ -58,3 +58,5 @@ dkms.conf
 /bin
 /build
 .devcontainer/
+./vscode
+./idea
