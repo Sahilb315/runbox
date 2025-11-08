@@ -51,9 +51,10 @@ int setup_all_namespaces(int enable_network) {
             setup_network_namespace(0);
             setup_pivot_root();
 
-             drop_bounding_caps();
+            // Drop privileged caps
+            drop_bounding_caps();
 
-            // Reset the capabilities to some default capabilities
+            // Reset to minimal default capabilities
              apply_default_capabilities();
 
             exec_shell();

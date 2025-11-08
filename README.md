@@ -14,6 +14,7 @@ Runbox is a lightweight Linux sandboxing system built from scratch in C. Its mai
 - **Network Namespace:** (In progress) Will provide network isolation for sandboxed processes.
 - **Pivot Root:** Uses `pivot_root` to fully isolate the filesystem from the host.
 - **Minimal Shell Environment:** Launches a interactive shell inside the sandbox.
+- **Limited Capabilities:** Drops powerful privileges (like `CAP_SYS_ADMIN`, `CAP_NET_ADMIN`) and keeps only safe defaults for basic operations.
 
 ## Prerequisites
 
