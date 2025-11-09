@@ -1,6 +1,12 @@
 #define _GNU_SOURCE
 
 #include <sys/wait.h>
+#include <pty.h>       // forkpty()
+#include <utmp.h>      // for login_tty()
+#include <unistd.h>    // exec
+#include <stdio.h>     // printf, perror
+#include <stdlib.h>    // exit
+#include <sys/wait.h>  // waitpid
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -16,6 +22,7 @@
 #include <sys/sysmacros.h>
 #include <linux/capability.h>
 #include "namespaces.h"
+#include "seccomp.h"
 
 int setup_all_namespaces(int enable_network) {
     // First fork: isolate namespace setup from main process
@@ -51,11 +58,21 @@ int setup_all_namespaces(int enable_network) {
             setup_network_namespace(0);
             setup_pivot_root();
 
+            //  To use the `SECCOMP_SET_MODE_FILTER` operation, either the calling thread must have the CAP_SYS_ADMIN
+            //  capability in its user namespace, or the thread must
+            //  already have the no_new_privs bit set
+            if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
+                perror("prctl(PR_SET_NO_NEW_PRIVS)");
+                return -1;
+            }
+
             // Drop privileged caps
             drop_bounding_caps();
 
             // Reset to minimal default capabilities
-             apply_default_capabilities();
+            apply_default_capabilities();
+
+            setup_seccomp(0);
 
             exec_shell();
         } else if (child_pid > 0) {
