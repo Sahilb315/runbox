@@ -72,7 +72,7 @@ int setup_all_namespaces(int enable_network) {
             // Reset to minimal default capabilities
             apply_default_capabilities();
 
-            setup_seccomp(0);
+            setup_seccomp();
 
             exec_shell();
         } else if (child_pid > 0) {

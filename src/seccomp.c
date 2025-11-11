@@ -15,10 +15,7 @@
     BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, __NR_##name, 0, 1), \
     BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW)
 
-int setup_seccomp(int enable_strict_mode) {
-    if (enable_strict_mode)
-        return syscall(SYS_seccomp, SECCOMP_SET_MODE_STRICT, 0, NULL);
-
+int setup_seccomp() {
     struct sock_filter filters[] = {
         BPF_STMT(BPF_LD + BPF_W + BPF_ABS, offsetof(struct seccomp_data, nr)),
         #include "seccomp_allowlist.h"
