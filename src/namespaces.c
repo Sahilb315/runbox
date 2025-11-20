@@ -1,12 +1,12 @@
 #define _GNU_SOURCE
 
 #include <sys/wait.h>
-#include <pty.h>       // forkpty()
-#include <utmp.h>      // for login_tty()
-#include <unistd.h>    // exec
-#include <stdio.h>     // printf, perror
-#include <stdlib.h>    // exit
-#include <sys/wait.h>  // waitpid
+#include <pty.h>
+#include <utmp.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -339,6 +339,7 @@ int setup_pivot_root(void) {
 
     return 0;
 }
+
 int drop_bounding_caps() {
     int caps_to_drop[] = { CAP_SYS_ADMIN, CAP_NET_ADMIN, CAP_SYS_PTRACE, CAP_SYS_MODULE };
     for (size_t i = 0; i < sizeof(caps_to_drop)/sizeof(caps_to_drop[0]); i++) {
