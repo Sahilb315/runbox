@@ -209,7 +209,7 @@ int setup_pid_namespace(void) {
 }
 
 int setup_network_namespace(int enable_network) {
-    if (enable_network) {
+    if (!enable_network) {
         if (unshare(CLONE_NEWNET) == -1) {
             printf("unshare failed while creating net namespace: %s\n", strerror(errno));
             return 1;
