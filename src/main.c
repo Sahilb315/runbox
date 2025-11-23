@@ -3,7 +3,8 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
-#include <cgroup.h>
+#include "cgroup.h"
+#include "runbox.h"
 
 int main(int argc, char **argv) {
     int enable_network = 0;
@@ -29,7 +30,7 @@ int main(int argc, char **argv) {
 
             case 2:
                 limits.memory_enabled = 1;
-                limits.memory_max = strdup(optarg);
+                limits.memory_max = optarg;
                 break;
 
             case 3:
@@ -41,7 +42,7 @@ int main(int argc, char **argv) {
                 limits.pids_enabled = 1;
 
                 if (strcmp(optarg, "max") == 0) {
-                    limits.pids_max = -2;
+                    limits.pids_max = PIDS_MAX_UNLIMITED;
                 } else {
                     limits.pids_max = atoi(optarg);
                 }
@@ -50,7 +51,7 @@ int main(int argc, char **argv) {
             case '?':
             default:
                 fprintf(stderr, "Unknown option.\n");
-                return 1;
+                return -1;
         }
     }
 

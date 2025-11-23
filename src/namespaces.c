@@ -20,26 +20,26 @@ int setup_user_namespace(void) {
 
     if (unshare(CLONE_NEWUSER) == -1) {
         printf("unshare failed while creating user namespace: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     // Check if the kernel actually allows user namespaces
     if (access("/proc/self/uid_map", W_OK) == -1) {
         perror("User namespaces may be disabled by sysctl");
-        return 1;
+        return -1;
     }
 
     int uid_fd = open("/proc/self/uid_map", O_WRONLY);
     if (uid_fd == -1) {
         printf("uid_map open failed: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     int gid_fd = open("/proc/self/gid_map", O_WRONLY);
     if (gid_fd == -1) {
         printf("gid_map open failed: %s\n", strerror(errno));
         close(uid_fd);
-        return 1;
+        return -1;
     }
 
     // Map current user to root (uid 0) in the namespace
@@ -47,7 +47,7 @@ int setup_user_namespace(void) {
         printf("uid_map write failed: %s\n", strerror(errno));
         close(uid_fd);
         close(gid_fd);
-        return 1;
+        return -1;
     }
 
     int setgroups_fd = open("/proc/self/setgroups", O_WRONLY);
@@ -55,14 +55,14 @@ int setup_user_namespace(void) {
         printf("setgroups open failed: %s\n", strerror(errno));
         close(uid_fd);
         close(gid_fd);
-        return 1;
+        return -1;
     }
 
     // Disable setgroups - required before mapping groups in user namespace
     if (write(setgroups_fd, "deny", 4) != 4) {
         printf("setgroups write failed: %s\n", strerror(errno));
         close(setgroups_fd);
-        return 1;
+        return -1;
     }
 
     close(setgroups_fd);
@@ -71,7 +71,7 @@ int setup_user_namespace(void) {
         printf("gid_map write failed: %s\n", strerror(errno));
         close(uid_fd);
         close(gid_fd);
-        return 1;
+        return -1;
     }
 
     close(gid_fd);
@@ -83,66 +83,66 @@ int setup_user_namespace(void) {
 int setup_mount_namespace(void) {
     if (unshare(CLONE_NEWNS) == -1) {
         printf("unshare failed while creating mount namespace: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     // Runbox root
     if (mkdir("/tmp/runbox", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating sandbox root: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
     // Mount new tmpfs - creates isolated filesystem for sandbox
     if (mount("tmpfs", "/tmp/runbox", "tmpfs", 0, NULL) == -1) {
         printf("failed mounting tmpfs: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     // Create necessary directories
     if (mkdir("/tmp/runbox/bin", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating sandbox bin: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
     if (mkdir("/tmp/runbox/lib", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating sandbox lib: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
     if (mkdir("/tmp/runbox/usr", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating sandbox usr: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
     if (mkdir("/tmp/runbox/tmp", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating sandbox tmp: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
     if (mkdir("/tmp/runbox/proc", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating sandbox proc: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
     // Bind mount essential directories from host, then make read-only
     if (mount("/bin", "/tmp/runbox/bin", NULL, MS_BIND, NULL) == -1) {
         printf("failed mounting /bin: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
     mount(NULL, "/tmp/runbox/bin", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL);
 
     // Mount /lib
     if (mount("/lib", "/tmp/runbox/lib", NULL, MS_BIND, NULL) == -1) {
         printf("failed mounting /lib: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
     mount(NULL, "/tmp/runbox/lib", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL);
 
@@ -151,7 +151,7 @@ int setup_mount_namespace(void) {
         if (mkdir("/tmp/runbox/lib64", 0755) == -1) {
             if (errno != EEXIST) {
                 printf("failed creating sandbox lib64: %s\n", strerror(errno));
-                return 1;
+                return -1;
             }
         }
         if (mount("/lib64", "/tmp/runbox/lib64", NULL, MS_BIND, NULL) == -1) {
@@ -166,7 +166,7 @@ int setup_mount_namespace(void) {
         if (mkdir("/tmp/runbox/usr/bin", 0755) == -1) {
             if (errno != EEXIST) {
                 printf("failed creating sandbox usr/bin: %s\n", strerror(errno));
-                return 1;
+                return -1;
             }
         }
         if (mount("/usr/bin", "/tmp/runbox/usr/bin", NULL, MS_BIND, NULL) == -1) {
@@ -181,7 +181,7 @@ int setup_mount_namespace(void) {
         if (mkdir("/tmp/runbox/usr/lib", 0755) == -1) {
             if (errno != EEXIST) {
                 printf("failed creating sandbox usr/lib: %s\n", strerror(errno));
-                return 1;
+                return -1;
             }
         }
         if (mount("/usr/lib", "/tmp/runbox/usr/lib", NULL, MS_BIND, NULL) == -1) {
@@ -202,7 +202,7 @@ int setup_mount_namespace(void) {
 int setup_pid_namespace(void) {
     if (unshare(CLONE_NEWPID) == -1) {
         printf("unshare failed while creating pid namespace: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -212,7 +212,7 @@ int setup_network_namespace(int enable_network) {
     if (!enable_network) {
         if (unshare(CLONE_NEWNET) == -1) {
             printf("unshare failed while creating net namespace: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
@@ -222,7 +222,7 @@ int setup_network_namespace(int enable_network) {
 int setup_ipc_and_uts_namespace(void) {
     if (unshare(CLONE_NEWUTS | CLONE_NEWIPC) == -1) {
         printf("unshare failed while creating uts & ipc namespace: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -233,19 +233,19 @@ int setup_pivot_root(void) {
     if (mkdir("/tmp/runbox/old_root", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating old_root directory: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
     // Atomically switch to new root and store old root in old_root
     if (syscall(SYS_pivot_root, "/tmp/runbox", "/tmp/runbox/old_root") == -1) {
         printf("failed to pivot root: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     if (chdir("/") == -1) {
         printf("failed to chdir to /: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     // Clean up old root for security - remove access to host filesystem
@@ -320,9 +320,9 @@ int exec_shell(void) {
         execl("/usr/bin/sh", "sh", NULL);
     } else {
         printf("No suitable shell found in sandbox\n");
-        return 1;
+        return -1;
     }
 
     printf("Failed to exec shell: %s\n", strerror(errno));
-    return 1;
+    return -1;
 }

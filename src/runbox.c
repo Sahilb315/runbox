@@ -17,7 +17,7 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
 
     if (pipe(pipefd) == -1) {
         perror("pipe");
-        return 1;
+        return -1;
     }
 
     // First fork: isolate namespace setup from main process
@@ -26,15 +26,15 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
         close(pipefd[0]);
 
         if (setup_user_namespace() != 0) {
-            return 1;
+            return -1;
         }
 
         if (setup_mount_namespace() != 0) {
-            return 1;
+            return -1;
         }
 
         if (setup_pid_namespace() != 0) {
-            return 1;
+            return -1;
         }
 
         // Second fork: actually enter the PID namespace (becomes PID 1 (the init process))
@@ -47,11 +47,11 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
             // Mount /proc to show processes from the new PID namespace
             if (mount("proc", "/tmp/runbox/proc", "proc", 0, NULL) == -1) {
                 printf("failed mounting proc: %s\n", strerror(errno));
-                return 1;
+                return -1;
             }
 
             if (setup_ipc_and_uts_namespace() != 0) {
-                return 1;
+                return -1;
             }
 
             // Currently there is no functionality to forward ports or create a tunnel for 
@@ -88,7 +88,7 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
             return WEXITSTATUS(status);
         } else {
             perror("fork failed");
-            return 1;
+            return -1;
         }
 
     } else if (pid > 0) {
@@ -109,7 +109,7 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
         return WEXITSTATUS(status);
     } else {
         perror("fork failed");
-        return 1;
+        return -1;
     }
 
     return 0;

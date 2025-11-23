@@ -23,22 +23,22 @@ int contains_controller(const char *enabled_controllers, const char *controller)
 int setup_cgroup(struct CgroupLimits *limits, pid_t child_pid) {
     // Validate if the controllers needed by the sandbox are provided & enabled in the host cgroup
     if (validate_and_enable_host_controllers(limits) != 0) {
-        return 1;
+        return -1;
     }
 
     // Create a new cgroup "runbox", which would be the root cgroup for all the runbox's instances
     if (create_sandbox_cgroup_and_enable_controllers(limits) != 0) {
-        return 1;
+        return -1;
     }
 
     // Validate the limits provided by the user for each controller
     if (validate_cgroup_limits(limits) != 0) {
-        return 1;
+        return -1;
     }
 
     // At last, create a new sub dir to "runbox/<id>" (with a unique id) and set the limits for its specific sandbox process
     if (create_and_apply_limits(limits, child_pid) != 0) {
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -51,7 +51,7 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
     if (mkdir(path, 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating runbox cgroup limit for %d: %s\n", child_pid, strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
@@ -63,7 +63,7 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
             snprintf(cpu_max, sizeof(cpu_max), "max");
         } else {
             int period = 100000;
-            int quota = (int)(limits->cpus * period);
+            double quota = (double)(limits->cpus * period);
 
             if (quota <= 0)
                 quota = 1;  // safety
@@ -76,7 +76,7 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
 
         if (write_file(path, cpu_max) != 0) {
             printf("Failed to write cpu.max\n");
-            return 1;
+            return -1;
         }
     }
 
@@ -86,14 +86,14 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
 
         if (write_file(path, limits->memory_max) != 0) {
             printf("Failed to write memory.max\n");
-            return 1;
+            return -1;
         }
     }
 
     if (limits->pids_enabled) {
         char pids_val[32];
 
-        if (limits->pids_max == -2) {
+        if (limits->pids_max == PIDS_MAX_ALIAS) {
             snprintf(pids_val, sizeof(pids_val), "max");
         } else {
             snprintf(pids_val, sizeof(pids_val), "%d", limits->pids_max);
@@ -104,7 +104,7 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
 
         if (write_file(path, pids_val) != 0) {
             printf("Failed to write pids.max\n");
-            return 1;
+            return -1;
         }
     }
 
@@ -115,13 +115,13 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
     int fd = open(path, O_WRONLY);
     if (fd == -1) {
         printf("Failed to open %s: %s\n", path, strerror(errno));
-        return 1;
+        return -1;
     }
 
     if (write(fd, pidbuf, strlen(pidbuf)) == -1) {
         printf("Failed to write to %s: %s\n", path, strerror(errno));
         close(fd);
-        return 1;
+        return -1;
     }
 
     close(fd);
@@ -188,7 +188,7 @@ int create_sandbox_cgroup_and_enable_controllers(struct CgroupLimits *limits) {
     if (mkdir("/sys/fs/cgroup/runbox", 0755) == -1) {
         if (errno != EEXIST) {
             printf("failed creating runbox cgroup: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
@@ -223,17 +223,17 @@ int create_sandbox_cgroup_and_enable_controllers(struct CgroupLimits *limits) {
 int validate_cgroup_limits(struct CgroupLimits *limits) {
     if (limits->cpu_enabled && validate_cpu_max(limits->cpus)) {
         printf("Invalid cpu.max\n");
-        return 1;
+        return -1;
     }
 
     if (limits->memory_enabled && validate_memory_max(limits->memory_max)) {
         printf("Invalid memory.max\n");
-        return 1;
+        return -1;
     }
 
     if (limits->pids_enabled && validate_pids_max(limits->pids_max)) {
         printf("Invalid pids.max\n");
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -241,9 +241,9 @@ int validate_cgroup_limits(struct CgroupLimits *limits) {
 
 int validate_cpu_max(int cpu) {
     // if cpu == 0, it refers to "max"
-    if (cpu < 0) return 1;
+    if (cpu < 0) return -1;
 
-    if (cpu > 1024) return 1;
+    if (cpu > MAX_CPU_LIMIT) return -1;
     
     return 0;
 }
@@ -258,38 +258,33 @@ int validate_memory_max(const char *mem) {
     char *end;
     long val = strtol(mem, &end, 10);
 
-    if (val <= 0) return 1;
+    if (val <= 0) return -1;
 
     if (*end == 0 || strcmp(end, "K")==0 || strcmp(end, "M")==0 || strcmp(end, "G")==0)
         return 0;
 
-    return 1;
+    return -1;
 }
 
 int validate_pids_max(int pids) {
-    if (pids == -2) // for max
+    if (pids == PIDS_MAX_ALIAS || pids > 0) {
         return 0;
+    }
 
-    if (pids == 0)
-        return 1; // 0 means "no process allowed" → wrong
-
-    if (pids > 0)
-        return 0;
-
-    return 1;
+    return -1;
 }
 
 int write_file(const char *path, const char *text) {
     FILE *f = fopen(path, "w");
     if (!f) {
         printf("Error opening %s: %s\n", path, strerror(errno));
-        return 1;
+        return -1;
     }
 
     if (fprintf(f, "%s", text) < 0) {
         printf("Error writing to %s: %s\n", path, strerror(errno));
         fclose(f);
-        return 1;
+        return -1;
     }
 
     fclose(f);
@@ -300,7 +295,7 @@ int read_file(const char *path, char *buffer, size_t size) {
     FILE *f = fopen(path, "r");
     if (!f) {
         printf("Error reading %s: %s\n", path, strerror(errno));
-        return 1;
+        return -1;
     }
 
     size_t n = fread(buffer, 1, size - 1, f);
@@ -319,7 +314,7 @@ int contains_controller(const char *enabled_controllers, const char *controller)
         // ensure it's a full controller boundary (not inside another token)
         if ((p == enabled_controllers || p[-1] == ' ') &&
             (p[wlen] == '\0' || p[wlen] == ' ' || p[wlen] == '\n')) {
-            return 1;
+            return -1;
         }
         p += wlen;
     }
