@@ -19,3 +19,10 @@ bin/%.o: src/%.c
 
 clean:
 	rm -rf bin build
+
+lint:
+	cppcheck --enable=all --suppress=missingIncludeSystem -Iinclude -Isrc src
+
+
+
+
