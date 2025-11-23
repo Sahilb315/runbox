@@ -29,7 +29,27 @@ Write the limits to /sys/fs/cgroup/runbox/<sandbox-pid>/<controller-file>
 Write the sandbox-pid to the /sys/fs/cgroup/runbox/<sandbox-pid>/cgroup.procs
 */
 int setup_cgroup(struct CgroupLimits *limits, pid_t child_pid) {
+    // Validate if the controllers needed by the sandbox are provided & enabled in the host cgroup
+    if (validate_and_enable_host_controllers(limits) != 0) {
+        return 1;
+    }
 
+    // Create a new cgroup "runbox", which would be the root cgroup for all the runbox's instances
+    if (create_sandbox_cgroup_and_enable_controllers(limits) != 0) {
+        return 1;
+    }
+
+    // Validate the limits provided by the user for each controller
+    if (validate_cgroup_limits(limits) != 0) {
+        return 1;
+    }
+
+    // At last, create a new sub dir to "runbox/<id>" (with a unique id) and set the limits for its specific sandbox process
+    if (create_and_apply_limits(limits, child_pid) != 0) {
+        return 1;
+    }
+
+    return 0;
 }
 
 int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
