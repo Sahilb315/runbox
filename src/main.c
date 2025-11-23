@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <string.h>
+#include <cgroup.h>
 
 int main(int argc, char **argv) {
     int enable_network = 0;

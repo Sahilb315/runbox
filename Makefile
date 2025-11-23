@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -Wno-unused-parameter -I./src -I./include
 $(shell mkdir -p build bin)
 
 # Source files
-SRCS = src/main.c src/runbox.c src/namespaces.c src/seccomp.c
+SRCS = src/main.c src/runbox.c src/namespaces.c src/seccomp.c src/cgroup.c
 OBJS = $(patsubst src/%.c,bin/%.o,$(SRCS))
 
 # Build the executable

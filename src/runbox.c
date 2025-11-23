@@ -10,11 +10,21 @@
 #include <string.h>
 #include "namespaces.h"
 #include "seccomp.h"
+#include "cgroup.h"
 
-int setup_sandbox(int enable_network) {
+int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
+    int pipefd[2];
+
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        return 1;
+    }
+
     // First fork: isolate namespace setup from main process
     pid_t pid = fork();
     if (pid == 0) {
+        close(pipefd[0]);
+
         if (setup_user_namespace() != 0) {
             return 1;
         }
@@ -29,7 +39,11 @@ int setup_sandbox(int enable_network) {
 
         // Second fork: actually enter the PID namespace (becomes PID 1 (the init process))
         pid_t child_pid = fork();
+
         if (child_pid == 0) {
+            close(pipefd[1]);
+            close(pipefd[0]);
+
             // Mount /proc to show processes from the new PID namespace
             if (mount("proc", "/tmp/runbox/proc", "proc", 0, NULL) == -1) {
                 printf("failed mounting proc: %s\n", strerror(errno));
@@ -63,6 +77,12 @@ int setup_sandbox(int enable_network) {
 
             exec_shell();
         } else if (child_pid > 0) {
+            if (write(pipefd[1], &child_pid, sizeof(child_pid)) != sizeof(child_pid)) {
+                perror("write pid to parent");
+            }
+
+            close(pipefd[1]);
+
             int status;
             waitpid(child_pid, &status, 0);
             return WEXITSTATUS(status);
@@ -72,6 +92,18 @@ int setup_sandbox(int enable_network) {
         }
 
     } else if (pid > 0) {
+        close(pipefd[1]); // parent doesn't write
+        pid_t gpid;
+        ssize_t n = read(pipefd[0], &gpid, sizeof(gpid));
+        if (n != sizeof(gpid)) {
+            printf("error while reading grandchild pid");
+        }
+
+        close(pipefd[0]);
+        if (gpid > 0) {
+            setup_cgroup(limits, gpid);
+        }
+
         int status;
         waitpid(pid, &status, 0);
         return WEXITSTATUS(status);

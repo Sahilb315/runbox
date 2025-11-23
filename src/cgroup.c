@@ -4,6 +4,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 // Steps to implement cgroup: 
 // Validate the limits 
@@ -120,11 +123,19 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
     snprintf(path, sizeof(path), "/sys/fs/cgroup/runbox/%d/cgroup.procs", (int)child_pid);
     snprintf(pidbuf, sizeof(pidbuf), "%d", (int)child_pid);
 
-
-    if (write_file(path, pidbuf) != 0) {
-        printf("Failed to write cgroup.procs\n");
+    int fd = open(path, O_WRONLY);
+    if (fd == -1) {
+        printf("Failed to open %s: %s\n", path, strerror(errno));
         return 1;
     }
+
+    if (write(fd, pidbuf, strlen(pidbuf)) == -1) {
+        printf("Failed to write to %s: %s\n", path, strerror(errno));
+        close(fd);
+        return 1;
+    }
+
+    close(fd);
 
     return 0;
 }
@@ -221,7 +232,7 @@ int create_sandbox_cgroup_and_enable_controllers(struct CgroupLimits *limits) {
 }
 
 int validate_cgroup_limits(struct CgroupLimits *limits) {
-    if (limits->cpu_enabled && validate_cpu_max(limits->cpu_max)) {
+    if (limits->cpu_enabled && validate_cpu_max(limits->cpus)) {
         printf("Invalid cpu.max\n");
         return 1;
     }
