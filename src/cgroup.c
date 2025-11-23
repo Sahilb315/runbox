@@ -6,19 +6,20 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stddef.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid);
 int validate_and_enable_host_controllers(struct CgroupLimits *limits);
 int create_sandbox_cgroup_and_enable_controllers(struct CgroupLimits *limits);
 int validate_cgroup_limits(struct CgroupLimits *limits);
-int validate_cpu_max(int cpu);
+int validate_cpu_max(double cpu);
 int validate_memory_max(const char *mem);
 int validate_pids_max(int pids);
 int write_file(const char *path, const char *text);
 int read_file(const char *path, char *buffer, size_t size);
 int contains_controller(const char *enabled_controllers, const char *controller);
-
 
 int setup_cgroup(struct CgroupLimits *limits, pid_t child_pid) {
     // Validate if the controllers needed by the sandbox are provided & enabled in the host cgroup
@@ -68,7 +69,7 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
             if (quota <= 0)
                 quota = 1;  // safety
 
-            snprintf(cpu_max, sizeof(cpu_max), "%d %d", quota, period);
+            snprintf(cpu_max, sizeof(cpu_max), "%f %d", quota, period);
         }
 
         snprintf(path, sizeof(path),
@@ -118,7 +119,8 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
         return -1;
     }
 
-    if (write(fd, pidbuf, strlen(pidbuf)) == -1) {
+    ssize_t written = write(fd, pidbuf, strlen(pidbuf));
+    if (written != (ssize_t)strlen(pidbuf)) {
         printf("Failed to write to %s: %s\n", path, strerror(errno));
         close(fd);
         return -1;
@@ -175,7 +177,6 @@ int validate_and_enable_host_controllers(struct CgroupLimits *limits) {
     if (enable_buf[0] == '\0')
         return 0;
 
-    // 5. Enable controllers by writing to cgroup.subtree_control
     if (write_file("/sys/fs/cgroup/cgroup.subtree_control", enable_buf) != 0) {
         printf("Failed to enable controllers in host subtree_control\n");
         return -1;
@@ -211,7 +212,6 @@ int create_sandbox_cgroup_and_enable_controllers(struct CgroupLimits *limits) {
     if (enable_buf[0] == '\0')
         return 0;
 
-    // 5. Enable controllers by writing to cgroup.subtree_control
     if (write_file("/sys/fs/cgroup/runbox/cgroup.subtree_control", enable_buf) != 0) {
         printf("Failed to enable controllers in runbox cgroup subtree_control\n");
         return -1;
@@ -239,7 +239,7 @@ int validate_cgroup_limits(struct CgroupLimits *limits) {
     return 0;
 }
 
-int validate_cpu_max(int cpu) {
+int validate_cpu_max(double cpu) {
     // if cpu == 0, it refers to "max"
     if (cpu < 0) return -1;
 
@@ -249,7 +249,7 @@ int validate_cpu_max(int cpu) {
 }
 
 int validate_memory_max(const char *mem) {
-    if (!mem) return 0;
+    if (!mem) return -1;
 
     if (strcmp(mem, "max") == 0)
         return 0;
@@ -260,8 +260,10 @@ int validate_memory_max(const char *mem) {
 
     if (val <= 0) return -1;
 
-    if (*end == 0 || strcmp(end, "K")==0 || strcmp(end, "M")==0 || strcmp(end, "G")==0)
+    if (*end == 0 || strcmp(end, "K")==0 || strcmp(end, "M")==0 || strcmp(end, "G")==0 ||
+     strcmp(end, "k")==0 || strcmp(end, "m")==0 || strcmp(end, "g")==0) {
         return 0;
+     }
 
     return -1;
 }

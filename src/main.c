@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
                 limits.pids_enabled = 1;
 
                 if (strcmp(optarg, "max") == 0) {
-                    limits.pids_max = PIDS_MAX_UNLIMITED;
+                    limits.pids_max = PIDS_MAX_ALIAS;
                 } else {
                     limits.pids_max = atoi(optarg);
                 }

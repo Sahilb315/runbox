@@ -26,14 +26,17 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
         close(pipefd[0]);
 
         if (setup_user_namespace() != 0) {
+            close(pipefd[1]);
             return -1;
         }
 
         if (setup_mount_namespace() != 0) {
+            close(pipefd[1]);
             return -1;
         }
 
         if (setup_pid_namespace() != 0) {
+            close(pipefd[1]);
             return -1;
         }
 
@@ -95,13 +98,20 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
         close(pipefd[1]); // parent doesn't write
         pid_t gpid;
         ssize_t n = read(pipefd[0], &gpid, sizeof(gpid));
+        close(pipefd[0]);
+
         if (n != sizeof(gpid)) {
-            printf("error while reading grandchild pid");
+            printf("error while reading grandchild pid: %s\n", strerror(errno));
+            return -1;
         }
 
-        close(pipefd[0]);
         if (gpid > 0) {
-            setup_cgroup(limits, gpid);
+            if (setup_cgroup(limits, gpid) != 0) {
+                printf("error: failed to setup cgroup for pid %d\n", gpid);
+                return -1;
+            }
+        } else {
+            printf("Warning: cgroup setup skipped (invalid grandchild pid). Resource limits will NOT be applied!\n");
         }
 
         int status;
