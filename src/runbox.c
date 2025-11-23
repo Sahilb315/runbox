@@ -100,15 +100,24 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
         ssize_t n = read(pipefd[0], &gpid, sizeof(gpid));
         close(pipefd[0]);
 
-        if (n != sizeof(gpid)) {
+        if (n < 0) {
             printf("error while reading grandchild pid: %s\n", strerror(errno));
+            return -1;
+        } else if (n == 0) {
+            printf("error: pipe closed before grandchild pid was written (EOF)\n");
+            return -1;
+        } else if (n != sizeof(gpid)) {
+            printf("error: short read while reading grandchild pid (got %zd bytes, expected %zu)\n", n, sizeof(gpid));
             return -1;
         }
 
         if (gpid > 0) {
             if (setup_cgroup(limits, gpid) != 0) {
                 printf("error: failed to setup cgroup for pid %d\n", gpid);
-                return -1;
+
+                int status;
+                waitpid(pid, &status, 0);
+                return WEXITSTATUS(status);
             }
         } else {
             printf("Warning: cgroup setup skipped (invalid grandchild pid). Resource limits will NOT be applied!\n");

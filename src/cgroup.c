@@ -69,7 +69,7 @@ int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid) {
             if (quota <= 0)
                 quota = 1;  // safety
 
-            snprintf(cpu_max, sizeof(cpu_max), "%f %d", quota, period);
+            snprintf(cpu_max, sizeof(cpu_max), "%d %d", (int)quota, period);
         }
 
         snprintf(path, sizeof(path),
@@ -261,7 +261,7 @@ int validate_memory_max(const char *mem) {
     if (val <= 0) return -1;
 
     if (*end == 0 || strcmp(end, "K")==0 || strcmp(end, "M")==0 || strcmp(end, "G")==0 ||
-     strcmp(end, "k")==0 || strcmp(end, "m")==0 || strcmp(end, "g")==0) {
+        strcmp(end, "k")==0 || strcmp(end, "m")==0 || strcmp(end, "g")==0) {
         return 0;
      }
 
@@ -316,7 +316,7 @@ int contains_controller(const char *enabled_controllers, const char *controller)
         // ensure it's a full controller boundary (not inside another token)
         if ((p == enabled_controllers || p[-1] == ' ') &&
             (p[wlen] == '\0' || p[wlen] == ' ' || p[wlen] == '\n')) {
-            return -1;
+            return 1;
         }
         p += wlen;
     }

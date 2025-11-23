@@ -35,7 +35,12 @@ int main(int argc, char **argv) {
 
             case 3:
                 limits.cpu_enabled = 1;
-                limits.cpus = atof(optarg);
+                double val = atof(optarg);
+                if (val <= 0) {
+                    fprintf(stderr, "Invalid value for --cpu: '%s'. Must be a positive number.\n", optarg);
+                    return -1;
+                }
+                limits.cpus = val;
                 break;
 
             case 4:
@@ -44,7 +49,12 @@ int main(int argc, char **argv) {
                 if (strcmp(optarg, "max") == 0) {
                     limits.pids_max = PIDS_MAX_ALIAS;
                 } else {
-                    limits.pids_max = atoi(optarg);
+                    int ret = atoi(optarg);
+                    if (ret <= 0) {
+                        fprintf(stderr, "Invalid value for --pids: '%s'. Must be a positive number.\n", optarg);
+                        return -1;
+                    }
+                    limits.pids_max = ret;
                 }
                 break;
 

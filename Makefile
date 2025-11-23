@@ -22,7 +22,3 @@ clean:
 
 lint:
 	cppcheck --enable=all --suppress=missingIncludeSystem -Iinclude -Isrc src
-
-
-
-

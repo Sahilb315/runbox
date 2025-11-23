@@ -25,7 +25,7 @@ Runbox is a lightweight Linux sandboxing system built from scratch in C. Its mai
 - **UTS Namespace:** Provides isolation of system identifiers like hostname and NIS domain name, giving each namespace its own values.
 - **Network Namespace:** Runbox currently supports full network isolation (default) or no isolation (`--enable-network`). More advanced setups like veth pairs, custom interfaces, or controlled connectivity are planned.
 - **Pivot Root:** Replaces the process’s root filesystem with an isolated one using pivot_root.
-- **Minimal Shell Environment:** Launches a interactive shell inside the sandbox.
+- **Minimal Shell Environment:** Launches an interactive shell inside the sandbox.
 - **Limited Capabilities:** Drops powerful privileges (like `CAP_SYS_ADMIN`, `CAP_NET_ADMIN`) and keeps only safe defaults for basic operations.
 - **Seccomp:** Implements a syscall allowlist filter using BPF to restrict the sandbox to essential syscalls required by the shell and filesystem operations (currently architecture-specific to aarch64).
 - **Cgroups v2:** Uses cgroups v2 for limiting resource usage by the sandbox. Currently supports `cpu`, `memory` & `pids` resource limitation

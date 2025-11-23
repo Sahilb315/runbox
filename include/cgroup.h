@@ -23,7 +23,7 @@
  */
 struct CgroupLimits {
     int  cpu_enabled;     // 1 if CPU controller is enabled, 0 otherwise
-    double cpus;            // Number of CPUs allowed (floating-point value recommended, e.g., 1.5)
+    double cpus;          // Number of CPUs allowed (floating-point value recommended, e.g., 1.5)
 
     char *memory_max;     // Maximum memory limit (e.g., "256M", "1G", or "max" for unlimited)
     int  memory_enabled;  // 1 if memory controller is enabled, 0 otherwise
