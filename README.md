@@ -1,5 +1,7 @@
 # Runbox
 
+![Logo](docs/runbox-logo.png)
+
 ## Overview
 
 Runbox is a lightweight Linux sandboxing system built from scratch in C. Its main purpose is educational: to help understand and implement standard sandboxing practices, process isolation, and resource management using Linux namespaces and related features.
