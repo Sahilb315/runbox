@@ -8,29 +8,18 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-// Steps to implement cgroup: 
-// Validate the limits 
-// Validate if the controllers are allowed/available in cgroup.controllers
-// Enable the available controllers in cgroup.subtree_control
-// Create group for the sandbox
-// Apply the limits for the specified controllers
-// Make the sandbox's process to use the group we created
+int create_and_apply_limits(struct CgroupLimits *limits, pid_t child_pid);
+int validate_and_enable_host_controllers(struct CgroupLimits *limits);
+int create_sandbox_cgroup_and_enable_controllers(struct CgroupLimits *limits);
+int validate_cgroup_limits(struct CgroupLimits *limits);
+int validate_cpu_max(int cpu);
+int validate_memory_max(const char *mem);
+int validate_pids_max(int pids);
+int write_file(const char *path, const char *text);
+int read_file(const char *path, char *buffer, size_t size);
+int contains_controller(const char *enabled_controllers, const char *controller);
 
-/* 
-Mount cgroup v2 (/sys/fs/cgroup)
 
-mkdir /sys/fs/cgroup/runbox
-
-echo "+cpu +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control
-
-mkdir /sys/fs/cgroup/runbox/<sandbox-pid>
-
-Now the <sandbox-pid> dir will have controller files.
-
-Write the limits to /sys/fs/cgroup/runbox/<sandbox-pid>/<controller-file>
-
-Write the sandbox-pid to the /sys/fs/cgroup/runbox/<sandbox-pid>/cgroup.procs
-*/
 int setup_cgroup(struct CgroupLimits *limits, pid_t child_pid) {
     // Validate if the controllers needed by the sandbox are provided & enabled in the host cgroup
     if (validate_and_enable_host_controllers(limits) != 0) {
