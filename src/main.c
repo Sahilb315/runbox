@@ -9,7 +9,14 @@
 int main(int argc, char **argv) {
     int enable_network = 0;
 
-    struct CgroupLimits limits = {0};
+    struct CgroupLimits limits = {
+        .memory_enabled = 1,
+        .memory_max = "max",
+        .cpu_enabled = 1,
+        .cpus = 0,
+        .pids_enabled = 1,
+        .pids_max = MAX_CPU_LIMIT
+    };
 
     static struct option long_opts[] = {
         {"enable-network", no_argument,       0, 1},

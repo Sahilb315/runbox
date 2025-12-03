@@ -23,12 +23,12 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
     // First fork: isolate namespace setup from main process
     pid_t pid = fork();
     if (pid == 0) {
-        close(pipefd[0]);
-
-        if (setup_user_namespace() != 0) {
-            close(pipefd[1]);
+        if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0) {
+            printf("failed to private mounts\n");
             return -1;
         }
+
+        close(pipefd[0]);
 
         if (setup_mount_namespace() != 0) {
             close(pipefd[1]);
@@ -47,8 +47,13 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
             close(pipefd[1]);
             close(pipefd[0]);
 
+            if (setup_pivot_root() != 0) {
+                printf("failed to pivot root\n");
+                return -1;
+            }
+
             // Mount /proc to show processes from the new PID namespace
-            if (mount("proc", "/tmp/runbox/proc", "proc", 0, NULL) == -1) {
+            if (mount("proc", "/proc", "proc", 0, NULL) == -1) {
                 printf("failed mounting proc: %s\n", strerror(errno));
                 return -1;
             }
@@ -57,10 +62,14 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
                 return -1;
             }
 
+            if (setup_user_namespace() != 0) {
+                close(pipefd[1]);
+                return -1;
+            }
+
             // Currently there is no functionality to forward ports or create a tunnel for 
             // getting network connection, so network is fully isolated
             setup_network_namespace(enable_network);
-            setup_pivot_root();
 
             //  To use the `SECCOMP_SET_MODE_FILTER` operation, either the calling thread must have the CAP_SYS_ADMIN
             //  capability in its user namespace, or the thread must
