@@ -11,8 +11,9 @@
 #include "namespaces.h"
 #include "seccomp.h"
 #include "cgroup.h"
+#include "runbox.h"
 
-int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
+int setup_sandbox(struct Config *config, struct CgroupLimits *limits) {
     int pipefd[2];
 
     if (pipe(pipefd) == -1) {
@@ -69,7 +70,7 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
 
             // Currently there is no functionality to forward ports or create a tunnel for 
             // getting network connection, so network is fully isolated
-            setup_network_namespace(enable_network);
+            setup_network_namespace(config->enable_network);
 
             //  To use the `SECCOMP_SET_MODE_FILTER` operation, either the calling thread must have the CAP_SYS_ADMIN
             //  capability in its user namespace, or the thread must
@@ -120,18 +121,22 @@ int setup_sandbox(int enable_network, struct CgroupLimits *limits) {
             return -1;
         }
 
+        if (config->disable_cgroups) {
+            printf("Warning: cgroup setup skipped. Resource limits will NOT be applied!\n");
+            goto wait_pid;
+        }
+
         if (gpid > 0) {
             if (setup_cgroup(limits, gpid) != 0) {
                 printf("error: failed to setup cgroup for pid %d\n", gpid);
 
-                int status;
-                waitpid(pid, &status, 0);
-                return WEXITSTATUS(status);
+                goto wait_pid;
             }
         } else {
             printf("Warning: cgroup setup skipped (invalid grandchild pid). Resource limits will NOT be applied!\n");
         }
 
+    wait_pid:
         int status;
         waitpid(pid, &status, 0);
         return WEXITSTATUS(status);

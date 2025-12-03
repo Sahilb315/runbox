@@ -7,7 +7,11 @@
 #include "runbox.h"
 
 int main(int argc, char **argv) {
-    int enable_network = 0;
+
+    struct Config config = {
+        .enable_network = 0,
+        .disable_cgroups = 0
+    };
 
     struct CgroupLimits limits = {
         .memory_enabled = 1,
@@ -19,10 +23,11 @@ int main(int argc, char **argv) {
     };
 
     static struct option long_opts[] = {
-        {"enable-network", no_argument,       0, 1},
-        {"memory",         required_argument, 0, 2},
-        {"cpu",            required_argument, 0, 3},
-        {"pids",           required_argument, 0, 4},
+        {"enable-network",  no_argument,       0, 1},
+        {"memory",          required_argument, 0, 2},
+        {"cpu",             required_argument, 0, 3},
+        {"pids",            required_argument, 0, 4},
+        {"disable-cgroups", no_argument,       0, 5},
         {0, 0, 0, 0}
     };
 
@@ -32,7 +37,7 @@ int main(int argc, char **argv) {
     while ((opt = getopt_long(argc, argv, "", long_opts, &long_index)) != -1) {
         switch (opt) {
             case 1:
-                enable_network = 1;
+                config.enable_network = 1;
                 break;
 
             case 2:
@@ -65,6 +70,10 @@ int main(int argc, char **argv) {
                 }
                 break;
 
+            case 5:
+                config.disable_cgroups = 1;
+                break;
+
             case '?':
             default:
                 fprintf(stderr, "Unknown option.\n");
@@ -72,6 +81,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    return setup_sandbox(enable_network, &limits);
+    return setup_sandbox(&config, &limits);
 }
 

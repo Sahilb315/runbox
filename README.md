@@ -47,7 +47,7 @@ make
 Runbox is intended to be run from the command line. After building, you can start a sandboxed shell:
 
 ```sh
-./build/runbox --enable-network --cpu=6
+./build/runbox --enable-network --disable-cgroups
 # You should see a shell prompt like: runbox@root:/#
 # Try running commands like 'ls', 'ps', 'ipcs' etc. inside the sandbox.
 ```
@@ -61,6 +61,7 @@ Runbox supports several command-line flags for configuring the sandbox:
 - `--memory=<value>`     Limit memory usage (supports values like 256M, 1G, or "max")
 - `--pids=<value>`       Limit maximum number of processes (use "max" for no limit)
 - `--enable-network`     Allow the sandbox to keep network access (disabled by default)
+- `--disable-cgroups`    Disables cgroup limitations.
 
 You can combine multiple flags:
 
