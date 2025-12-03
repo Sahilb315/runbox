@@ -50,6 +50,7 @@ Runbox is intended to be run from the command line. After building, you can star
 
 ```sh
 ./build/runbox --enable-network --disable-cgroups
+
 # You should see a shell prompt like: runbox@root:/#
 # Try running commands like 'ls', 'ps', 'ipcs' etc. inside the sandbox.
 ```
