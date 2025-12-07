@@ -85,9 +85,10 @@ Internally Runbox:
 
 ## TODO
 
-- [ ] Full network namespace support (veth pairs, virtual interfaces, controlled connectivity)
 - [x] Add support for cgroups for resource management.
 - [x] Integrate seccomp or syscall filtering.
+- [ ] Network support (veth pairs, virtual interfaces, controlled connectivity)
+- [ ] Add an interface support for external applications execution inside Runbox, similar to containers.
 
 ## License
 
